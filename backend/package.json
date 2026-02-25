@@ -1,0 +1,48 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "Chat App Backend with NestJS and WebSocket",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "ts-node src/main.ts",
+    "dev:watch": "nodemon --exec ts-node src/main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@nestjs/common": "^11.1.14",
+    "@nestjs/core": "^11.1.14",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.14",
+    "@nestjs/platform-socket.io": "^11.1.14",
+    "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.14",
+    "@types/uuid": "^11.0.0",
+    "bcrypt": "^6.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "cors": "^2.8.6",
+    "firebase-admin": "^13.6.1",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "pg": "^8.18.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "socket.io": "^4.8.3",
+    "typeorm": "^0.3.28",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/node": "^25.3.0",
+    "@types/passport-jwt": "^4.0.1",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
