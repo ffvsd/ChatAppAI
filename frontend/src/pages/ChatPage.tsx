@@ -191,11 +191,6 @@ export const ChatPage: React.FC = () => {
     );
   }
 
-  if (!isAuthenticated) {
-    navigate(`/login?redirect=/chat/${groupId}`);
-    return null;
-  }
-
   if (error || !group) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-gray-50">
