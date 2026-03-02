@@ -4,6 +4,13 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # Ignore favicon if not exists
+    location = /favicon.ico {
+        log_not_found off;
+        access_log off;
+        return 204;
+    }
+
     # SPA routing - redirect all requests to index.html
     location / {
         try_files $uri $uri/ /index.html;
