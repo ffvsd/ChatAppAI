@@ -8,9 +8,9 @@ RUN npm ci
 
 COPY . .
 
-# # Build args - truyền vào khi build
-# ARG API_BASE_URL=https://chatapp-backend-70q4.onrender.com/api
-# ARG SOCKET_URL=https://chatapp-backend-70q4.onrender.com
+# Build args - truyền vào khi build
+ARG API_BASE_URL
+ARG SOCKET_URL
 
 # Set env cho Parcel build
 ENV NODE_ENV=production
