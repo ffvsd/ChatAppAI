@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:3001';
+const SOCKET_URL = process.env.NODE_ENV === 'production'
+  ? window.location.origin
+  : 'http://localhost:3001';
 
 interface SocketGroup {
   id: string;
@@ -13,6 +15,7 @@ class SocketService {
   connect(): Socket {
     if (!this.socket) {
       this.socket = io(SOCKET_URL, {
+        transports: ['websocket', 'polling'],
         autoConnect: true,
         reconnection: true,
         reconnectionAttempts: 5,

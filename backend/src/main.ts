@@ -10,18 +10,26 @@ async function bootstrap() {
       credentials: true,
     },
   });
+
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+    credentials: true,
+  });
   
   // Enable validation globally
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
   }));
+
+  const port = process.env.PORT || 3001;
   
   // Set global prefix for API routes
   app.setGlobalPrefix('api');
   
-  await app.listen(3001);
-  console.log('🚀 Server is running on http://localhost:3001');
+  await app.listen(port);
+  console.log(`🚀 Server is running on port ${port}`);
 }
 
 bootstrap();
