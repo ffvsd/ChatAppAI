@@ -1,8 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
-const SOCKET_URL = process.env.NODE_ENV === 'production'
-  ? window.location.origin
-  : 'http://localhost:3001';
+// Đọc từ env, mặc định localhost cho development
+const SOCKET_URL = process.env.SOCKET_URL || 'http://localhost:3001';
 
 interface SocketGroup {
   id: string;

@@ -60,5 +60,8 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/chatapp-frontend:latest
             ${{ secrets.DOCKER_HUB_USERNAME }}/chatapp-frontend:${{ github.sha }}
+          build-args: |
+            API_BASE_URL=${{ vars.API_BASE_URL }}
+            SOCKET_URL=${{ vars.SOCKET_URL }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

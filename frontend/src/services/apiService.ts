@@ -1,8 +1,5 @@
-// Development: http://localhost:3001/api
-// Production: /api (nginx proxy)
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? '/api'
-  : 'http://localhost:3001/api';
+// Đọc từ env, mặc định localhost cho development
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001/api';
 
 interface ApiResponse<T> {
   data?: T;

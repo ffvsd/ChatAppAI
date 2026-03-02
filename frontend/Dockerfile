@@ -8,19 +8,29 @@ RUN npm ci
 
 COPY . .
 
+# Build args - truyền vào khi build
+ARG API_BASE_URL=http://localhost:3001/api
+ARG SOCKET_URL=http://localhost:3001
+
+# Set env cho Parcel build
 ENV NODE_ENV=production
+ENV API_BASE_URL=$API_BASE_URL
+ENV SOCKET_URL=$SOCKET_URL
 
 RUN npm run build
 
-# Production stage - dùng nginx để serve static files
-FROM nginx:alpine
+# Production stage - dùng serve để serve static files
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# Install serve globally
+RUN npm install -g serve
 
 # Copy built files
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx template (nginx:alpine tự động chạy envsubst)
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=builder /app/dist ./dist
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Serve static files on port 80
+CMD ["serve", "-s", "dist", "-l", "80"]
