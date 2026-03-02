@@ -32,6 +32,8 @@ services:
     container_name: chatapp-frontend
     depends_on:
       - backend
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://backend:3001}
     ports:
       - "${FRONTEND_PORT:-80}:80"
 
