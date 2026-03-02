@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 // Đọc từ env, mặc định localhost cho development
-const SOCKET_URL = process.env.SOCKET_URL || 'http://localhost:3001';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
 
 interface SocketGroup {
   id: string;
