@@ -19,6 +19,7 @@ export class AuthController {
 
   @Post('temporary')
   async createTemporaryUser(@Body() dto: CreateTemporaryUserDto) {
+    console.log("BODY:", dto);
     return this.authService.createTemporaryUser(dto);
   }
 
