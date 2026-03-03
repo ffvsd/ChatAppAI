@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   backend:
     build: ./backend
@@ -19,7 +19,11 @@ services:
     depends_on:
       - database
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DB_HOST: database
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      DB_PORT: 5432
       JWT_SECRET: ${JWT_SECRET}
       PORT: ${PORT:-3001}
       FRONTEND_URL: ${FRONTEND_URL}
@@ -31,8 +35,8 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://backend:3001/api}
-        VITE_SOCKET_URL: ${VITE_SOCKET_URL:-http://backend:3001}
+        API_BASE_URL: ${API_BASE_URL:-http://backend:3001/api}
+        SOCKET_URL: ${SOCKET_URL:-http://backend:3001}
     container_name: chatapp-frontend
     depends_on:
       - backend
