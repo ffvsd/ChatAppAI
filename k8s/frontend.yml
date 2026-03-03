@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: lethanhlong/chatapp-frontend:latest
+          image: lethanhlong/chatapp-frontend:ee0744ae1069d46e00dcee9166b1041b3d1d4071
           imagePullPolicy: Always
           ports:
             - containerPort: 80

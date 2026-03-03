@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: lethanhlong/chatapp-backend:latest
+          image: lethanhlong/chatapp-backend:ee0744ae1069d46e00dcee9166b1041b3d1d4071
           imagePullPolicy: Always
           ports:
             - containerPort: 3001
