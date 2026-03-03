@@ -126,7 +126,7 @@ export const LoginPage: React.FC = () => {
           className="w-full block text-center bg-gray-100 hover:bg-gray-200 text-gray-700 
                    font-semibold py-3 px-6 rounded-xl transition-colors duration-200"
         >
-          Chat nhanh
+          Chat ngay và luôn
         </Link>
       </div>
     </div>
