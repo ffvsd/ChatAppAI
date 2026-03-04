@@ -3,6 +3,7 @@ import {
   Get, 
   Param, 
   Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { MessageService } from './message.service';
@@ -24,5 +25,21 @@ export class MessageController {
       limit ? parseInt(limit, 10) : 50,
       before ? parseInt(before, 10) : undefined,
     );
+  }
+
+  @Get('private/:partnerId')
+  @UseGuards(JwtAuthGuard)
+  async getPrivateMessages(
+    @Req() req: any,
+    @Param('partnerId') partnerId: string,
+    @Query('limit') limit?: string,
+    @Query('before') before?: string,
+  ) {
+    const ownerId = req.user.id;
+    return this.messageService.getPrivateMessages(
+      ownerId, 
+      partnerId, 
+      limit ? parseInt(limit, 10) : 50, 
+      before ? parseInt(before, 10) : undefined);
   }
 }

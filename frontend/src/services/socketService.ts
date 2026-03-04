@@ -8,6 +8,11 @@ interface SocketGroup {
   name: string;
 }
 
+export enum JoinType {
+  group = 'group',
+  private = 'private'
+}
+
 class SocketService {
   private socket: Socket | null = null;
 
@@ -48,6 +53,9 @@ class SocketService {
     }
   }
 
+  // Socket event emitters
+
+  // Group
   joinRoom(userId: string, userName: string, group: SocketGroup, fcmToken?: string): void {
     if (this.socket) {
       this.socket.emit('join', { userId, userName, group, fcmToken });
@@ -76,6 +84,35 @@ class SocketService {
   leaveRoom(roomId: string, userId: string): void {
     if (this.socket) {
       this.socket.emit('leaveRoom', { roomId, userId });
+    }
+  }
+
+  // Private
+  handleJoinPrivateChat(userId: string, userName: string, targetUserId: string, fcmToken?: string): void {
+    if (this.socket) {
+      console.log('check run handleJoinPrivateChat with:', { userId, userName, targetUserId, fcmToken });
+      this.socket.emit('joinPrivateChat', { userId, userName, receiverId: targetUserId });
+    }
+  }
+
+  sendPrivateMessage(message: {
+    id: string;
+    senderId: string;
+    receiverId: string;
+    content: string;
+    timestamp: number;
+  }): void {
+    if (this.socket) {
+      this.socket.emit('sendPrivateMessage', message);
+    }
+  }
+
+  handlePreJoin(data: any, type: JoinType): void {
+    console.log('handlePreJoin called with:', { data, type });
+    if (type === JoinType.group) {
+      this.joinRoom(data.userId, data.userName, data.group, data.fcmToken);
+    } else if (type === JoinType.private) {
+      this.handleJoinPrivateChat(data.userId, data.userName, data.targetUserId, data.fcmToken);
     }
   }
 }

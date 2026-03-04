@@ -4,9 +4,10 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { GuestPage } from './pages/GuestPage';
-import { HomePage } from './pages/HomePage';
-import { ChatPage } from './pages/ChatPage';
 import { JoinGroupPage } from './pages/JoinGroupPage';
+import { MainLayout } from './layouts/MainLayout';
+import { ChatArea } from './components/ChatArea';
+import { JoinType } from './services/socketService';
 
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -60,9 +61,12 @@ const AppRoutes: React.FC = () => {
       {/* Join group - accessible by anyone */}
       <Route path="/join/:inviteCode" element={<JoinGroupPage />} />
       
-      {/* Protected routes */}
-      <Route path="/" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
-      <Route path="/chat/:groupId" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+      {/* Protected routes with MainLayout */}
+      <Route path="/" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+        <Route index element={null} />
+        <Route path="chat/private/:chatId" element={<ChatArea joinType={JoinType.private}/>} />
+        <Route path="chat/group/:chatId" element={<ChatArea joinType={JoinType.group}/>} />
+      </Route>
       
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />

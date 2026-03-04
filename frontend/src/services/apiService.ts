@@ -137,6 +137,21 @@ class ApiService {
     return this.request<any[]>(`/messages/group/${groupId}${query}`);
   }
 
+  async getPrivateMessages(targetUserId: string, limit?: number, before?: number) {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (before) params.append('before', before.toString());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<any[]>(`/messages/private/${targetUserId}${query}`);
+  }
+
+  async getUserByName(name: string) {
+    return this.request<any[]>(`/users/getUserByName`, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
   // Utility
   logout() {
     this.setToken(null);

@@ -27,6 +27,15 @@ interface SocketMessage {
   };
 }
 
+interface PrivateMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  receiverId: string;
+  content: string;
+  timestamp: number;
+}
+
 interface OnlineUserInfo {
   id: string;
   name: string;
@@ -45,6 +54,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private onlineUsers: Map<string, OnlineUserInfo> = new Map();
   private rooms: Map<string, Set<string>> = new Map();
+
+  private privateConversations: Map<string, Set<string>> = new Map();
+  private getPrivateConversationId(userId1: string, userId2: string): string {
+    // Sắp xếp để đảm bảo luôn cùng 1 conversationId cho 2 user
+    const sortedIds = [userId1, userId2].sort();
+    return `private_${sortedIds[0]}_${sortedIds[1]}`;
+  }
 
   constructor(
     private notificationService: NotificationService,
@@ -79,6 +95,82 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  // Join Private Chat
+  @SubscribeMessage('joinPrivateChat')
+  async handleJoinPrivateChat(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: {
+      userId: string;
+      userName: string;
+      targetUserId: string;
+      
+    }
+  ) {
+    const { userId, userName, targetUserId } = data;
+    const conversationId = this.getPrivateConversationId(userId, targetUserId);
+    client.join(conversationId);
+
+    if (!this.privateConversations.has(conversationId)) {
+      this.privateConversations.set(conversationId, new Set());
+    }
+    this.privateConversations.get(conversationId)!.add(userId);
+
+    console.log(`${userName} joined private chat: ${conversationId}`);
+
+    return { success: true, conversationId };
+  }
+
+  // Send Private Message
+  @SubscribeMessage('sendPrivateMessage')
+  async handleSendPrivateMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() message: PrivateMessage,
+  ) {
+    const { senderId, senderName, receiverId, content } = message;
+    const conversationId = this.getPrivateConversationId(senderId, receiverId);
+    console.log('Private message received:', message);
+
+    // Save private message to database
+    try {
+      await this.messageService.createPrivateMessage(
+        message.id,
+        senderId,
+        receiverId,
+        content,
+      );
+    } catch (error) {
+      console.error('Error saving private message:', error);
+    }
+
+    this.server.to(conversationId).emit('newPrivateMessage', {
+      ...message,
+      conversationId,
+    });
+
+    return { success: true, conversationId };
+  }
+
+  // Type Private Message
+  @SubscribeMessage('typingPrivate')
+  handleTypingPrivate(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { 
+      senderId: string;
+      receiverId: string;
+      senderName: string;
+      isTyping: boolean;
+    }, 
+  ) {
+    const conversationId = this.getPrivateConversationId(data.senderId, data.receiverId);
+    client.to(conversationId).emit('userTypingPrivate', {
+      senderId: data.senderId,
+      senderName: data.senderName,
+      isTyping: data.isTyping,
+    });
+  }
+
+
+  // Join Group Chat
   @SubscribeMessage('join')
   async handleJoin(
     @ConnectedSocket() client: Socket,

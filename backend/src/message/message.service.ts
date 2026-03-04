@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Message } from '../entities/message.entity';
 import { User } from '../entities/user.entity';
+import { PrivateMessage } from '../entities/private-message.entity';
 
 @Injectable()
 export class MessageService {
@@ -11,6 +12,8 @@ export class MessageService {
     private messageRepository: Repository<Message>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(PrivateMessage)
+    private privateMessageRepository: Repository<PrivateMessage>,
   ) {}
 
   async createMessage(
@@ -66,4 +69,49 @@ export class MessageService {
       relations: ['sender'],
     });
   }
+
+  async createPrivateMessage(
+  id: string,
+  senderId: string,
+  receiverId: string,
+  content: string,
+  ) {
+    const message = this.privateMessageRepository.create({
+      id,
+      senderId,
+      receiverId,
+      content,
+    });
+    return this.privateMessageRepository.save(message);
+  }
+
+  async getPrivateMessages(owner: string, partner: string, limit: number = 50, before?: number): Promise<PrivateMessage[] | User> {
+    const queryBuilder = this.privateMessageRepository
+      .createQueryBuilder('message')
+      .leftJoinAndSelect('message.receiver', 'receiver')
+      .where(
+        '(message.senderId = :owner AND message.receiverId = :partner) OR (message.senderId = :partner AND message.receiverId = :owner)',
+        { owner, partner }
+      )
+      .orderBy('message.createdAt', 'ASC')
+      .take(limit);
+
+    if (before) {
+      queryBuilder.andWhere('message.createdAt < :before', { before });
+    }
+
+    const messages = (await queryBuilder.getMany()).reverse();
+
+    if(messages.length > 0) {
+      return messages;
+    } else {
+      const partnerUser = await this.userRepository
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.privateMessages', 'privateMessage')
+      .where('user.id = :id', { id: partner })
+      .getOne();
+      return partnerUser;
+    }
+  }
+
 }

@@ -28,3 +28,29 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #a1a1a1;
 }
+
+/* Zalo-like color variables */
+:root {
+  --zalo-blue: #0068ff;
+  --zalo-blue-light: #e7f3ff;
+  --zalo-blue-dark: #0052cc;
+}
+
+/* Custom scrollbar for chat list */
+.chat-list-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-list-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-list-scrollbar::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.chat-list-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+

@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Message } from './message.entity';
 import { GroupMember } from './group-member.entity';
+import { PrivateMessage } from './private-message.entity';
 
 export enum UserType {
   REGISTERED = 'registered',
@@ -52,4 +53,7 @@ export class User {
 
   @OneToMany(() => GroupMember, (groupMember) => groupMember.user)
   groupMemberships: GroupMember[];
+
+  @OneToMany(() => PrivateMessage, pm => pm.receiver)
+  privateMessages: PrivateMessage[];
 }

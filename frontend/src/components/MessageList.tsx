@@ -7,8 +7,8 @@ interface Message {
   content: string;
   timestamp: number;
   group?: {
-    id: string;
-    name: string;
+    id?: string;
+    name?: string;
   };
 }
 

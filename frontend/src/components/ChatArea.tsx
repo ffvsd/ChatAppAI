@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
-import { socketService } from '../services/socketService';
-import { MessageList } from '../components/MessageList';
-import { MessageInput } from '../components/MessageInput';
+import { socketService, JoinType } from '../services/socketService';
+import { MessageList } from './MessageList';
+import { MessageInput } from './MessageInput';
 import { Group, Message } from '../types';
 import { v4 as uuid } from 'uuid';
 
@@ -18,10 +18,13 @@ interface TypingUser {
   userName: string;
 }
 
-export const ChatPage: React.FC = () => {
-  const { groupId } = useParams<{ groupId: string }>();
+interface ChatAreaProps {
+    joinType: JoinType;
+}
+
+export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
+  const { chatId } = useParams<{ chatId: string }>();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
   
   const [group, setGroup] = useState<Group | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -32,29 +35,47 @@ export const ChatPage: React.FC = () => {
   const [error, setError] = useState('');
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [privateChatUser, setPrivateChatUser] = useState<{ id: string; name: string } | null>(null);
   
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasJoined = useRef(false);
 
+
   // Load group and messages
   useEffect(() => {
-    if (!groupId || !isAuthenticated) return;
+
+    if (!chatId || !isAuthenticated) return;
+    
+    // Reset state when groupId changes
+    setGroup(null);
+    setMessages([]);
+    setIsLoading(true);
+    setError('');
+    hasJoined.current = false;
     
     const loadData = async () => {
       try {
-        const groupData = await apiService.getGroup(groupId);
-        if (!groupData) {
-          setError('Nhóm không tồn tại');
-          return;
-        }
-        setGroup(groupData);
+        if (joinType === JoinType.private) {
+            const privateData = await apiService.getPrivateMessages(chatId);
+            setIsLoading(false);
+            setPrivateChatUser({ id: chatId, name: privateData[0]?.receiver?.displayName || 'Unknown' });
+            setMessages(privateData);
+        } else {
+            const groupData = await apiService.getGroup(chatId);
+            if (!groupData) {
+            setError('Nhóm không tồn tại');
+            return;
+            }
+            setGroup(groupData);
 
-        const messagesData = await apiService.getGroupMessages(groupId);
-        setMessages(messagesData.map((m: any) => ({
-          ...m,
-          senderName: m.sender?.displayName || 'Unknown',
-          group: { id: groupId, name: groupData.name },
-        })));
+            const messagesData = await apiService.getGroupMessages(chatId);
+            setMessages(messagesData.map((m: any) => ({
+            ...m,
+            senderName: m.sender?.displayName || 'Unknown',
+            group: { id: chatId, name: groupData.name },
+            })));
+        }
+        
       } catch (err: any) {
         setError(err.message || 'Không thể tải dữ liệu');
       } finally {
@@ -63,12 +84,11 @@ export const ChatPage: React.FC = () => {
     };
 
     loadData();
-  }, [groupId, isAuthenticated]);
+  }, [chatId,  isAuthenticated]);
 
   // Setup socket connection
   useEffect(() => {
-    if (!group || !user || hasJoined.current) return;
-
+    if((!group && !privateChatUser || !user)) return;
     const socket = socketService.connect();
 
     // Check if socket is already connected
@@ -119,8 +139,20 @@ export const ChatPage: React.FC = () => {
       });
     });
 
+    const dataToJoinChat = joinType === JoinType.group ? {
+        userId: user.id,
+        userName: user.displayName,
+        group: { id: group?.id, name: group?.name },
+    } : {
+        userId: user.id,
+        userName: user.displayName,
+        targetUserId: privateChatUser?.id, // Assuming privateChatUser.id is the target user ID for private chats
+    };
+
+    console.log('Joining chat with data:', dataToJoinChat, 'and joinType:', joinType);
+
     // Join room
-    socketService.joinRoom(user.id, user.displayName, { id: group.id, name: group.name });
+    socketService.handlePreJoin(dataToJoinChat, joinType);
     hasJoined.current = true;
 
     return () => {
@@ -132,9 +164,9 @@ export const ChatPage: React.FC = () => {
       socket.off('userLeft');
       socket.off('userTyping');
     };
-  }, [group, user]);
+  }, [group, privateChatUser, user]);
 
-  // Cleanup on unmount
+  // Cleanup on unmount or group change
   useEffect(() => {
     return () => {
       if (group && user && hasJoined.current) {
@@ -185,39 +217,32 @@ export const ChatPage: React.FC = () => {
 
   if (authLoading || isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
+      <div className="h-full flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  if (error || !group) {
+  if (error) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-gray-50">
+      <div className="h-full flex flex-col items-center justify-center bg-gray-50">
         <p className="text-red-500 mb-4">{error || 'Không tìm thấy nhóm'}</p>
-        <Link to="/" className="text-blue-500 hover:text-blue-600">Về trang chủ</Link>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between">
+      <header className="bg-white shadow-sm px-4 py-3 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
-          <Link
-            to="/"
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100"
-          >
-            <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </Link>
           <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-            {group.name.charAt(0).toUpperCase()}
+            {joinType === JoinType.group ? group?.name.charAt(0).toUpperCase() : privateChatUser?.name.charAt(0).toUpperCase()}
           </div>
           <div>
-            <h1 className="font-semibold text-gray-800">{group.name}</h1>
+            <h1 className="font-semibold text-gray-800">
+              {joinType === JoinType.group ? group?.name : privateChatUser?.name}
+            </h1>
             <p className="text-xs text-gray-500">
               {isConnected ? (
                 <>
@@ -234,16 +259,23 @@ export const ChatPage: React.FC = () => {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowInviteModal(true)}
-          className="flex items-center gap-2 px-3 py-2 text-sm text-blue-500 hover:bg-blue-50 rounded-lg"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-              d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
-          Mời
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowInviteModal(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-blue-500 hover:bg-blue-50 rounded-lg"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+            </svg>
+            Mời
+          </button>
+          <button className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* Messages */}
@@ -254,7 +286,7 @@ export const ChatPage: React.FC = () => {
           senderName: m.senderName || 'Unknown',
           content: m.content,
           timestamp: m.timestamp,
-          group: m.group || { id: group.id, name: group.name },
+          group: m.group || { id: group?.id, name: group?.name },
         }))}
         currentUserId={user?.id || ''}
       />
@@ -277,7 +309,7 @@ export const ChatPage: React.FC = () => {
               <input
                 type="text"
                 readOnly
-                value={`${window.location.origin}/join/${group.inviteCode}`}
+                value={`${window.location.origin}/join/${group?.inviteCode}`}
                 className="flex-1 bg-transparent text-sm text-gray-700 outline-none"
               />
               <button
@@ -295,7 +327,7 @@ export const ChatPage: React.FC = () => {
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-2">Hoặc sử dụng mã mời:</p>
               <div className="text-center py-3 bg-gray-100 rounded-lg text-2xl font-mono tracking-wider">
-                {group.inviteCode}
+                {group?.inviteCode}
               </div>
             </div>
 

@@ -8,6 +8,8 @@ import { User } from './entities/user.entity';
 import { Group } from './entities/group.entity';
 import { Message } from './entities/message.entity';
 import { GroupMember } from './entities/group-member.entity';
+import { UserModule } from './user/user.module';
+import { PrivateMessage } from './entities/private-message.entity';
 
 @Module({
   imports: [
@@ -18,7 +20,7 @@ import { GroupMember } from './entities/group-member.entity';
       username: process.env.DB_USERNAME || 'postgres',
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'chat_app',
-      entities: [User, Group, Message, GroupMember],
+      entities: [User, Group, Message, GroupMember, PrivateMessage],
       synchronize: true, // Only for development! Use migrations in production
       logging: false,
     }),
@@ -26,6 +28,7 @@ import { GroupMember } from './entities/group-member.entity';
     AuthModule,
     GroupModule,
     MessageModule,
+    UserModule,
   ],
   controllers: [],
   providers: [],

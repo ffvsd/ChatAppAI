@@ -8,9 +8,10 @@ import { User } from '../entities/user.entity';
 import { Message } from '../entities/message.entity';
 import { Group } from '../entities/group.entity';
 import { GroupMember } from '../entities/group-member.entity';
+import { PrivateMessage } from '../entities/private-message.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Message, Group, GroupMember])],
+  imports: [TypeOrmModule.forFeature([User, Message, PrivateMessage, Group, GroupMember])],
   providers: [ChatGateway, NotificationService, MessageService, GroupService],
   exports: [ChatGateway],
 })
