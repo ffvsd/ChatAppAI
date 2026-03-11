@@ -62,14 +62,7 @@ class SocketService {
     }
   }
 
-  sendMessage(message: {
-    id: string;
-    senderId: string;
-    senderName: string;
-    content: string;
-    timestamp: number;
-    group: SocketGroup;
-  }): void {
+  sendMessage(message: any): void {
     if (this.socket) {
       this.socket.emit('sendMessage', message);
     }
@@ -95,14 +88,9 @@ class SocketService {
     }
   }
 
-  sendPrivateMessage(message: {
-    id: string;
-    senderId: string;
-    receiverId: string;
-    content: string;
-    timestamp: number;
-  }): void {
+  sendPrivateMessage(message: any): void {
     if (this.socket) {
+      console.log('check sendPrivateMessage with:', message);
       this.socket.emit('sendPrivateMessage', message);
     }
   }

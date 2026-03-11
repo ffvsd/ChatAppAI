@@ -102,20 +102,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: {
       userId: string;
       userName: string;
-      targetUserId: string;
+      receiverId: string;
       
     }
   ) {
-    const { userId, userName, targetUserId } = data;
-    const conversationId = this.getPrivateConversationId(userId, targetUserId);
+    const { userId, userName, receiverId } = data;
+    const conversationId = this.getPrivateConversationId(userId, receiverId);
     client.join(conversationId);
 
     if (!this.privateConversations.has(conversationId)) {
       this.privateConversations.set(conversationId, new Set());
     }
     this.privateConversations.get(conversationId)!.add(userId);
-
-    console.log(`${userName} joined private chat: ${conversationId}`);
 
     return { success: true, conversationId };
   }
@@ -128,6 +126,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const { senderId, senderName, receiverId, content } = message;
     const conversationId = this.getPrivateConversationId(senderId, receiverId);
+    console.log('handleSendPrivateMessage called with:', conversationId);
     console.log('Private message received:', message);
 
     // Save private message to database
@@ -142,7 +141,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       console.error('Error saving private message:', error);
     }
 
-    this.server.to(conversationId).emit('newPrivateMessage', {
+    this.server.to(conversationId).emit('newMessage', {
       ...message,
       conversationId,
     });

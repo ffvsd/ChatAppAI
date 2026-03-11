@@ -142,7 +142,7 @@ class ApiService {
     if (limit) params.append('limit', limit.toString());
     if (before) params.append('before', before.toString());
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.request<any[]>(`/messages/private/${targetUserId}${query}`);
+    return this.request<any>(`/messages/private/${targetUserId}${query}`);
   }
 
   async getUserByName(name: string) {

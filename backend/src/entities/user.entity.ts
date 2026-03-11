@@ -36,7 +36,7 @@ export class User {
   })
   userType: UserType;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, default: '' })
   fcmToken: string;
 
   @Column({ default: true })

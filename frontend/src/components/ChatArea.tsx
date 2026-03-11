@@ -40,55 +40,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasJoined = useRef(false);
 
-
-  // Load group and messages
-  useEffect(() => {
-
-    if (!chatId || !isAuthenticated) return;
-    
-    // Reset state when groupId changes
-    setGroup(null);
-    setMessages([]);
-    setIsLoading(true);
-    setError('');
-    hasJoined.current = false;
-    
-    const loadData = async () => {
-      try {
-        if (joinType === JoinType.private) {
-            const privateData = await apiService.getPrivateMessages(chatId);
-            setIsLoading(false);
-            setPrivateChatUser({ id: chatId, name: privateData[0]?.receiver?.displayName || 'Unknown' });
-            setMessages(privateData);
-        } else {
-            const groupData = await apiService.getGroup(chatId);
-            if (!groupData) {
-            setError('Nhóm không tồn tại');
-            return;
-            }
-            setGroup(groupData);
-
-            const messagesData = await apiService.getGroupMessages(chatId);
-            setMessages(messagesData.map((m: any) => ({
-            ...m,
-            senderName: m.sender?.displayName || 'Unknown',
-            group: { id: chatId, name: groupData.name },
-            })));
-        }
-        
-      } catch (err: any) {
-        setError(err.message || 'Không thể tải dữ liệu');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-  }, [chatId,  isAuthenticated]);
-
   // Setup socket connection
   useEffect(() => {
-    if((!group && !privateChatUser || !user)) return;
+    if (!user) return;
+    if (!group && !privateChatUser) return;
     const socket = socketService.connect();
 
     // Check if socket is already connected
@@ -164,7 +119,53 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
       socket.off('userLeft');
       socket.off('userTyping');
     };
-  }, [group, privateChatUser, user]);
+  }, [group, privateChatUser]);
+
+  // Load group and messages
+  useEffect(() => {
+    console.log('ChatArea useEffect triggered with chatId:', chatId, 'and joinType:', joinType);
+    if (!chatId || !isAuthenticated) return;
+    
+    // Reset state when groupId changes
+    setGroup(null);
+    setMessages([]);
+    setIsLoading(true);
+    setError('');
+    hasJoined.current = false;
+    
+    const loadData = async () => {
+      console.log(joinType, chatId);
+      try {
+        if (joinType === JoinType.private) {
+            const privateData = await apiService.getPrivateMessages(chatId);
+            setIsLoading(false);
+            setPrivateChatUser({ id: chatId, name: privateData?.displayName || 'Unknown' });
+            setMessages(privateData?.privateMessages || []);
+        } else {
+            const groupData = await apiService.getGroup(chatId);
+            if (!groupData) {
+            setError('Nhóm không tồn tại');
+            return;
+            }
+            setGroup(groupData);
+
+            const messagesData = await apiService.getGroupMessages(chatId);
+            setMessages(messagesData.map((m: any) => ({
+            ...m,
+            senderName: m.sender?.displayName || 'Unknown',
+            group: { id: chatId, name: groupData.name },
+            })));
+        }
+        
+      } catch (err: any) {
+        setError(err.message || 'Không thể tải dữ liệu');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+  }, [chatId,  isAuthenticated]);
 
   // Cleanup on unmount or group change
   useEffect(() => {
@@ -176,27 +177,36 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
     };
   }, [group, user]);
 
-  const sendMessage = useCallback((content: string) => {
-    if (!user || !content.trim() || !group) return;
 
-    const message = {
+  const sendMessage = useCallback((content: string) => {
+    if (!user || !content.trim()) return;
+    const message = joinType === JoinType.group ? {
       id: uuid(),
       senderId: user.id,
       senderName: user.displayName,
       content: content.trim(),
       timestamp: Date.now(),
-      group: { id: group.id, name: group.name },
+      group: { id: group?.id, name: group?.name },
+    } : {
+      id: uuid(),
+      senderId: user.id,
+      senderName: user.displayName,
+      content: content.trim(),
+      receiverId: privateChatUser?.id,
     };
 
-    socketService.sendMessage(message);
+    if (joinType === JoinType.group) {
+      socketService.sendMessage(message);
+    } else {
+      socketService.sendPrivateMessage(message);
+    }
     
-    socketService.sendTyping(group.id, user.id, user.displayName, false);
-  }, [user, group]);
+  }, [group, privateChatUser]);
 
   const handleTyping = useCallback(() => {
     if (!user || !group) return;
 
-    socketService.sendTyping(group.id, user.id, user.displayName, true);
+    socketService.sendTyping(group?.id, user.id, user.displayName, true);
 
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current);
@@ -205,7 +215,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
     typingTimeoutRef.current = setTimeout(() => {
       socketService.sendTyping(group.id, user.id, user.displayName, false);
     }, 2000);
-  }, [user, group]);
+  }, [group, privateChatUser]);
 
   const copyInviteLink = () => {
     if (!group) return;
