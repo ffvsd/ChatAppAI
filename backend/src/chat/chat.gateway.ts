@@ -57,7 +57,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private privateConversations: Map<string, Set<string>> = new Map();
   private getPrivateConversationId(userId1: string, userId2: string): string {
-    // Sắp xếp để đảm bảo luôn cùng 1 conversationId cho 2 user
     const sortedIds = [userId1, userId2].sort();
     return `private_${sortedIds[0]}_${sortedIds[1]}`;
   }
@@ -70,23 +69,48 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private userRepository: Repository<User>,
   ) {}
 
-  handleConnection(client: Socket) {
-    console.log(`Client connected: ${client.id}`);
+  async handleConnection(client: Socket) {
+    const userId = client.handshake.query.userId as string;
+    const userName = client.handshake.query.userName as string;
+    const fcmToken = client.handshake.query.fcmToken as string | undefined;
+
+    if (!userId || !userName) {
+      client.disconnect();
+      return;
+    }
+
+    const listGroup = await this.groupService.getUserGroups(userId);
+
+    this.onlineUsers.set(userId, {
+      id: userId,
+      name: userName,
+      socketId: client.id,
+      fcmToken: fcmToken as string | undefined,
+    });
+
+    if (listGroup) {
+      const groupIds = listGroup.map(group => group.id).join(',');
+      const groups = (groupIds as string).split(',');
+      for (const groupId of groups) {
+        client.join(groupId);
+        if (!this.rooms.has(groupId)) this.rooms.set(groupId, new Set());
+        this.rooms.get(groupId)!.add(userId);
+        this.emitOnlineUsersToRoom(groupId);
+      }
+    }
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`Client disconnected: ${client.id}`);
     
     // Remove user from online users map
     for (const [id, user] of this.onlineUsers.entries()) {
       if (user.socketId === client.id) {
         this.onlineUsers.delete(id);
-        
+      
         // Notify all rooms this user was in
         for (const [roomId, members] of this.rooms.entries()) {
           if (members.has(id)) {
             members.delete(id);
-            this.server.to(roomId).emit('userLeft', { userId: id, userName: user.name });
             this.emitOnlineUsersToRoom(roomId);
           }
         }
@@ -124,10 +148,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody() message: PrivateMessage,
   ) {
-    const { senderId, senderName, receiverId, content } = message;
+    const { senderId, receiverId, content } = message;
     const conversationId = this.getPrivateConversationId(senderId, receiverId);
-    console.log('handleSendPrivateMessage called with:', conversationId);
-    console.log('Private message received:', message);
 
     // Save private message to database
     try {
@@ -181,16 +203,6 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     },
   ) {
     const { userId, userName, group, fcmToken } = data;
-    
-    // Store online user info
-    this.onlineUsers.set(userId, {
-      id: userId,
-      name: userName,
-      socketId: client.id,
-      fcmToken,
-    });
-
-    console.log('user online:', this.onlineUsers);
 
     // Update FCM token in database if provided
     if (fcmToken) {
@@ -205,14 +217,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.rooms.set(group.id, new Set());
     }
     this.rooms.get(group.id)!.add(userId);
-
-    // Notify others in room
-    client.to(group.id).emit('userJoined', { userId, userName });
     
     // Send online users list to room
     this.emitOnlineUsersToRoom(group.id);
-    
-    console.log(`${userName} joined room ${group.id}`);
     
     return { success: true, message: `Joined room ${group.id}` };
   }
@@ -275,6 +282,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     });
   }
 
+
+  // Leave Group Chat - Currently not used
   @SubscribeMessage('leaveRoom')
   handleLeaveRoom(
     @ConnectedSocket() client: Socket,

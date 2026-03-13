@@ -16,7 +16,8 @@ export enum JoinType {
 class SocketService {
   private socket: Socket | null = null;
 
-  connect(): Socket {
+  connect(userId: string, userName: string): Socket {
+    console.log('Connecting to socket with:', { userId, userName });
     if (!this.socket) {
       this.socket = io(SOCKET_URL, {
         transports: ['websocket', 'polling'],
@@ -24,6 +25,11 @@ class SocketService {
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
+        query: {
+          userId,
+          userName,
+          fcmToken: null,
+        },
       });
 
       this.socket.on('connect', () => {
@@ -83,7 +89,6 @@ class SocketService {
   // Private
   handleJoinPrivateChat(userId: string, userName: string, targetUserId: string, fcmToken?: string): void {
     if (this.socket) {
-      console.log('check run handleJoinPrivateChat with:', { userId, userName, targetUserId, fcmToken });
       this.socket.emit('joinPrivateChat', { userId, userName, receiverId: targetUserId });
     }
   }

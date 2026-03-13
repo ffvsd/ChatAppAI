@@ -40,93 +40,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasJoined = useRef(false);
 
-  // Setup socket connection
-  useEffect(() => {
-    if (!user) return;
-    if (!group && !privateChatUser) return;
-    const socket = socketService.connect();
-
-    // Check if socket is already connected
-    if (socket.connected) {
-      setIsConnected(true);
-    }
-
-    socket.on('connect', () => {
-      setIsConnected(true);
-    });
-
-    socket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-
-    socket.on('newMessage', (message: any) => {
-      setMessages((prev) => {
-        const exists = prev.some((m) => m.id === message.id);
-        if (exists) return prev;
-        return [...prev, {
-          ...message,
-          senderName: message.senderName,
-        }];
-      });
-    });
-
-    socket.on('onlineUsers', (users: OnlineUser[]) => {
-      setOnlineUsers(users);
-    });
-
-    socket.on('userJoined', (data: { userId: string; userName: string }) => {
-      console.log(`${data.userName} joined`);
-    });
-
-    socket.on('userLeft', (data: { userId: string; userName: string }) => {
-      setOnlineUsers((prev) => prev.filter((u) => u.id !== data.userId));
-    });
-
-    socket.on('userTyping', (data: { userId: string; userName: string; isTyping: boolean }) => {
-      setTypingUsers((prev) => {
-        if (data.isTyping) {
-          const exists = prev.some((u) => u.userId === data.userId);
-          if (exists) return prev;
-          return [...prev, { userId: data.userId, userName: data.userName }];
-        } else {
-          return prev.filter((u) => u.userId !== data.userId);
-        }
-      });
-    });
-
-    const dataToJoinChat = joinType === JoinType.group ? {
-        userId: user.id,
-        userName: user.displayName,
-        group: { id: group?.id, name: group?.name },
-    } : {
-        userId: user.id,
-        userName: user.displayName,
-        targetUserId: privateChatUser?.id, // Assuming privateChatUser.id is the target user ID for private chats
-    };
-
-    console.log('Joining chat with data:', dataToJoinChat, 'and joinType:', joinType);
-
-    // Join room
-    socketService.handlePreJoin(dataToJoinChat, joinType);
-    hasJoined.current = true;
-
-    return () => {
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('newMessage');
-      socket.off('onlineUsers');
-      socket.off('userJoined');
-      socket.off('userLeft');
-      socket.off('userTyping');
-    };
-  }, [group, privateChatUser]);
-
   // Load group and messages
   useEffect(() => {
-    console.log('ChatArea useEffect triggered with chatId:', chatId, 'and joinType:', joinType);
     if (!chatId || !isAuthenticated) return;
     
-    // Reset state when groupId changes
     setGroup(null);
     setMessages([]);
     setIsLoading(true);
@@ -134,7 +51,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
     hasJoined.current = false;
     
     const loadData = async () => {
-      console.log(joinType, chatId);
       try {
         if (joinType === JoinType.private) {
             const privateData = await apiService.getPrivateMessages(chatId);
@@ -167,15 +83,84 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ joinType }) => {
     loadData();
   }, [chatId,  isAuthenticated]);
 
-  // Cleanup on unmount or group change
+  // Setup socket connection
   useEffect(() => {
-    return () => {
-      if (group && user && hasJoined.current) {
-        socketService.leaveRoom(group.id, user.id);
-        hasJoined.current = false;
-      }
+    console.log('run here', user);
+    if (!user || !user.id || !user.displayName) return;
+    if (!group && !privateChatUser) return;
+
+    console.log('Setting up socket connection for user:', user);
+    const socket = socketService.connect(user.id, user.displayName);
+
+    // Check if socket is already connected
+    if (socket.connected) {
+      setIsConnected(true);
+    }
+
+    socket.on('connect', () => {
+      setIsConnected(true);
+    });
+
+    socket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    socket.on('newMessage', (message: any) => {
+      setMessages((prev) => {
+        const exists = prev.some((m) => m.id === message.id);
+        if (exists) return prev;
+        return [...prev, {
+          ...message,
+          senderName: message.senderName,
+        }];
+      });
+    });
+
+    socket.on('onlineUsers', (users: OnlineUser[]) => {
+      setOnlineUsers(users);
+    });
+
+    // socket.on('userLeft', (data: { userId: string; userName: string }) => {
+    //   setOnlineUsers((prev) => prev.filter((u) => u.id !== data.userId));
+    // });
+
+    socket.on('userTyping', (data: { userId: string; userName: string; isTyping: boolean }) => {
+      setTypingUsers((prev) => {
+        if (data.isTyping) {
+          const exists = prev.some((u) => u.userId === data.userId);
+          if (exists) return prev;
+          return [...prev, { userId: data.userId, userName: data.userName }];
+        } else {
+          return prev.filter((u) => u.userId !== data.userId);
+        }
+      });
+    });
+
+    const dataToJoinChat = joinType === JoinType.group ? {
+        userId: user.id,
+        userName: user.displayName,
+        group: { id: group?.id, name: group?.name },
+    } : {
+        userId: user.id,
+        userName: user.displayName,
+        targetUserId: privateChatUser?.id, // Assuming privateChatUser.id is the target user ID for private chats
     };
-  }, [group, user]);
+
+    // Join room
+    socketService.handlePreJoin(dataToJoinChat, joinType);
+    hasJoined.current = true;
+
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('newMessage');
+      socket.off('onlineUsers');
+      socket.off('userLeft');
+      socket.off('userTyping');
+    };
+  }, [chatId, isAuthenticated]);
+
+  
 
 
   const sendMessage = useCallback((content: string) => {
